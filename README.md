@@ -1,4 +1,4 @@
-# WowStayDead
+# Stay Dead
 Wow addon: Stay Dead
 
 ## Description
