@@ -2,7 +2,7 @@
 ## Title: Stay Dead
 ## Notes: Prevents accidental spirit releases
 ## Author: Nielhardt
-## Version: 12.0.1.1
+## Version: 12.0.1.2
 ## IconTexture: Interface\Icons\spell_holy_guardianspirit
 ## X-Category: Combat
 
