@@ -81,12 +81,17 @@ local function IsReleaseAllowed(db)
     -- If modifier key is required
     if db.keyModifier and db.keyModifier ~= "NONE" then
         if IsRequiredModifierDown(db.keyModifier) then
+            if db.timerSeconds == 0 then
+                releaseUnlocked = true
+                return true
+            end
+
             if not modifierPressTime then
                 modifierPressTime = currentTime
             end
             
             local holdTime = currentTime - modifierPressTime
-            local requiredHoldTime = db.timerSeconds and db.timerSeconds > 0 and db.timerSeconds or 2
+            local requiredHoldTime = db.timerSeconds and db.timerSeconds > 0 and db.timerSeconds or 1
             
             if holdTime >= requiredHoldTime then
                 releaseUnlocked = true -- Permanently unlock
@@ -130,7 +135,23 @@ local function RegisterDeathPopupButtons(db, popup)
     end
 end
 
-local function ReEnableDeathPopupButtons()
+local function ResetDeathPopupState()
+    if not isActive then return end
+
+    deathTime = nil
+    modifierPressTime = nil
+    releaseUnlocked = false
+    isActive = false
+
+    for i = 1, 4 do
+        local popup = _G["StaticPopup"..i]
+        if popup and popup.StayDeadHeadline then
+            popup.StayDeadHeadline:Hide()
+            popup.StayDeadHeadline:SetText("")
+            popup.StayDeadHeadline = nil
+        end
+    end
+
     for _, btn in ipairs(hiddenButtons) do
         btn:SetAlpha(1)
         btn:EnableMouse(true)
@@ -143,9 +164,24 @@ local function StartUnlockListener(db, popup)
     local fontString = popup.Text or _G[popup:GetName().."Text"]
 
     if fontString then
+        local originalText = fontString:GetText()
+        local originalHeight = popup:GetHeight()
+
+        if not popup.StayDeadHeadline then
+            popup.StayDeadHeadline = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            popup.StayDeadHeadline:SetJustifyH("CENTER")
+            popup.StayDeadHeadline:SetText("")
+        end
+
+        if not popup.StayDeadSubtext then
+            popup.StayDeadSubtext = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            popup.StayDeadSubtext:SetJustifyH("CENTER")
+            popup.StayDeadSubtext:SetText("")
+        end
+
         popup:SetScript("OnUpdate", function(self, elapsed)
             if self.which ~= "DEATH" then
-                ReEnableDeathPopupButtons()
+                ResetDeathPopupState()
                 self:SetScript("OnUpdate", StaticPopup_OnUpdate)
                 return 
             end
@@ -159,35 +195,45 @@ local function StartUnlockListener(db, popup)
                 if db.keyModifier and db.keyModifier ~= "NONE" then
                     if modifierPressTime then
                         local remaining = (db.timerSeconds or 2) - (currentTime - modifierPressTime)
-                        fontString:SetText(string.format(L.KEEP_HOLDING, db.keyModifier, math.max(0, remaining)))
+
+                        popup.StayDeadHeadline:SetFont(popup.StayDeadHeadline:GetFont(), 14)
+                        popup.StayDeadHeadline:SetPoint("TOP", popup, "TOP", 0, -25)
+                        popup.StayDeadHeadline:SetText(string.format(L.KEEP_HOLDING, db.keyModifier))
+                        fontString:SetText(string.format("\n\n(%.1fs)", math.max(0, remaining)))
                     else
-                        fontString:SetText(string.format(L.DO_NOT_RELEASE .. "\n" .. L.HOLD_TO_RELEASE, db.keyModifier))
+                        popup.StayDeadHeadline:SetFont(popup.StayDeadHeadline:GetFont(), 18)
+                        popup.StayDeadHeadline:SetPoint("TOP", popup, "TOP", 0, -20)
+                        popup.StayDeadHeadline:SetText(L.DO_NOT_RELEASE)
+                        fontString:SetText(string.format("\n\n" .. L.HOLD_TO_RELEASE, db.keyModifier))
                     end
                 else
+                    
                     local elapsedDeath = currentTime - deathTime
                     local remaining = (db.timerSeconds or 0) - elapsedDeath
-                    fontString:SetText(string.format(L.WAIT_TO_RELEASE .. "\n" .. L.READY_IN, math.max(0, remaining)))
+
+                    popup.StayDeadHeadline:SetFont(popup.StayDeadHeadline:GetFont(), 14)
+                    popup.StayDeadHeadline:SetPoint("TOP", popup, "TOP", 0, -25)
+                    popup.StayDeadHeadline:SetText(L.WAIT_TO_RELEASE)
+                    fontString:SetText(string.format("\n\n" .. L.READY_IN, math.max(0, remaining)))
                 end
 
-                popup:SetHeight(85) -- Increase height to accommodate extra line
+                popup:SetHeight(100) -- Increase height to accommodate extra line
             else
                 -- Restore the original Blizzard popup
-                ReEnableDeathPopupButtons()
+                local inInstance = IsInInstance()
+                if inInstance then
+                    popup:SetHeight(originalHeight)
+                    fontString:SetText(originalText)
+                end
+
+                ResetDeathPopupState()
                 self:SetScript("OnUpdate", StaticPopup_OnUpdate)
             end
         end)
     end
 end
 
-local function ResetDeathPopupState()
-    if not isActive then return end
 
-    deathTime = nil
-    modifierPressTime = nil
-    releaseUnlocked = false
-    isActive = false
-    ReEnableDeathPopupButtons()
-end
 
 local function SetupDeathPopup(db)
     local shouldBeActive = ShouldBeActiveInCurrentLocation()
