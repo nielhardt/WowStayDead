@@ -42,6 +42,7 @@ end
 local eventFrame = CreateFrame("Frame")
 eventFrame:RegisterEvent("PLAYER_LOGIN")
 
+local isActive = nil;
 local deathTime = nil
 local modifierPressTime = nil
 local releaseUnlocked = false
@@ -115,25 +116,18 @@ end
 local function RegisterDeathPopupButtons(db, popup)
     hiddenButtons = {}
 
-    C_Timer.After(0.1, function() -- Delay to ensure buttons are created
-         -- Check if popup is still valid
-        if not popup or not popup:IsShown() then
-            return
-        end
-
-        for j = 1, 3 do
-            local button = popup.GetButton and popup:GetButton(j) or popup["button"..j]
-            
-            if button then
-                local text = button:GetText()
-                if text == _G.DEATH_RELEASE or (db.blockSoulstone and text == _G.USE_SOULSTONE) then
-                    table.insert(hiddenButtons, button)
-                    button:EnableMouse(false)
-                    button:SetAlpha(0)
-                end
+    for j = 1, 3 do
+        local button = popup.GetButton and popup:GetButton(j) or popup["button"..j]
+        
+        if button then
+            local text = button:GetText()
+            if text == _G.DEATH_RELEASE or (db.blockSoulstone and text == _G.USE_SOULSTONE) then
+                table.insert(hiddenButtons, button)
+                button:EnableMouse(false)
+                button:SetAlpha(0)
             end
         end
-    end)
+    end
 end
 
 local function ReEnableDeathPopupButtons()
@@ -150,6 +144,12 @@ local function StartUnlockListener(db, popup)
 
     if fontString then
         popup:SetScript("OnUpdate", function(self, elapsed)
+            if self.which ~= "DEATH" then
+                ReEnableDeathPopupButtons()
+                self:SetScript("OnUpdate", StaticPopup_OnUpdate)
+                return 
+            end
+
             if not deathTime then return end
             
             local currentTime = GetTime()
@@ -171,40 +171,45 @@ local function StartUnlockListener(db, popup)
 
                 popup:SetHeight(85) -- Increase height to accommodate extra line
             else
-                -- Restore the original Blizzard string
-                fontString:SetText(_G.DEATH_RELEASE)
-                popup:SetHeight(75)
-                self:SetScript("OnUpdate", StaticPopup_OnUpdate)
+                -- Restore the original Blizzard popup
                 ReEnableDeathPopupButtons()
+                self:SetScript("OnUpdate", StaticPopup_OnUpdate)
             end
         end)
     end
 end
 
 local function ResetDeathPopupState()
+    if not isActive then return end
+
     deathTime = nil
     modifierPressTime = nil
     releaseUnlocked = false
-    hiddenButtons = {}
+    isActive = false
+    ReEnableDeathPopupButtons()
 end
 
 local function SetupDeathPopup(db)
     local shouldBeActive = ShouldBeActiveInCurrentLocation()
     if not shouldBeActive then
+        ResetDeathPopupState()
         return false
     end
 
     -- Record death time and reset modifier tracking
     ResetDeathPopupState()
     deathTime = GetTime()
+    isActive = true
     
     -- Find the DEATH static popup
     for i = 1, 4 do
         local popup = _G["StaticPopup" .. i]
         if popup and popup:IsShown() and popup.which == "DEATH" then
             -- We will handle hiding buttons in the update loop to ensure they stay hidden if game tries to re-enable them
-            RegisterDeathPopupButtons(db, popup)
-            StartUnlockListener(db, popup)
+            C_Timer.After(0, function()
+                RegisterDeathPopupButtons(db, popup)
+                StartUnlockListener(db, popup)
+            end)
         end
     end
 end
@@ -216,7 +221,18 @@ eventFrame:SetScript("OnEvent", function(self, event, ...)
         if popup then
             -- Hook the OnHide script to clean up our mess
             popup:HookScript("OnHide", function(self)
-                ResetDeathPopupState()
+                local anyDeathShown = false
+                for j = 1, 4 do
+                    local other = _G["StaticPopup"..j]
+                    if other and other:IsShown() and other.which == "DEATH" then
+                        anyDeathShown = true
+                        break
+                    end
+                end
+
+                if not anyDeathShown then
+                    ResetDeathPopupState()
+                end
             end)
         end
     end
