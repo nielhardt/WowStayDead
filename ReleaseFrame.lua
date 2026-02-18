@@ -145,10 +145,26 @@ local function ResetDeathPopupState()
 
     for i = 1, 4 do
         local popup = _G["StaticPopup"..i]
-        if popup and popup.StayDeadHeadline then
-            popup.StayDeadHeadline:Hide()
-            popup.StayDeadHeadline:SetText("")
-            popup.StayDeadHeadline = nil
+        if popup then
+            -- 1. Restore the original text if we stored it
+            if popup.StayDead_OriginalText then
+                local fontString = popup.Text or _G[popup:GetName().."Text"]
+                if fontString then
+                    fontString:SetText(popup.StayDead_OriginalText)
+                end
+                popup.StayDead_OriginalText = nil
+            end
+
+            -- 2. Restore the original height if we stored it
+            if popup.StayDead_OriginalHeight then
+                popup:SetHeight(popup.StayDead_OriginalHeight)
+                popup.StayDead_OriginalHeight = nil
+            end
+
+            if popup.StayDead_Headline then
+                popup.StayDead_Headline:Hide()
+                popup.StayDead_Headline:SetText("")
+            end
         end
     end
 
@@ -162,78 +178,70 @@ end
 
 local function StartUnlockListener(db, popup)
     local fontString = popup.Text or _G[popup:GetName().."Text"]
+    if not fontString then return end
 
-    if fontString then
-        local originalText = fontString:GetText()
-        local originalHeight = popup:GetHeight()
-
-        if not popup.StayDeadHeadline then
-            popup.StayDeadHeadline = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            popup.StayDeadHeadline:SetJustifyH("CENTER")
-            popup.StayDeadHeadline:SetText("")
-        end
-
-        if not popup.StayDeadSubtext then
-            popup.StayDeadSubtext = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-            popup.StayDeadSubtext:SetJustifyH("CENTER")
-            popup.StayDeadSubtext:SetText("")
-        end
-
-        popup:SetScript("OnUpdate", function(self, elapsed)
-            if self.which ~= "DEATH" then
-                ResetDeathPopupState()
-                self:SetScript("OnUpdate", StaticPopup_OnUpdate)
-                return 
-            end
-
-            if not deathTime then return end
-            
-            local currentTime = GetTime()
-            local displayReady = IsReleaseAllowed(db) and releaseUnlocked
-            
-            if not displayReady then
-                if db.keyModifier and db.keyModifier ~= "NONE" then
-                    if modifierPressTime then
-                        local remaining = (db.timerSeconds or 2) - (currentTime - modifierPressTime)
-
-                        popup.StayDeadHeadline:SetFont(popup.StayDeadHeadline:GetFont(), 14)
-                        popup.StayDeadHeadline:SetPoint("TOP", popup, "TOP", 0, -25)
-                        popup.StayDeadHeadline:SetText(string.format(L.KEEP_HOLDING, db.keyModifier))
-                        fontString:SetText(string.format("\n\n(%.1fs)", math.max(0, remaining)))
-                    else
-                        popup.StayDeadHeadline:SetFont(popup.StayDeadHeadline:GetFont(), 18)
-                        popup.StayDeadHeadline:SetPoint("TOP", popup, "TOP", 0, -20)
-                        popup.StayDeadHeadline:SetText(L.DO_NOT_RELEASE)
-                        fontString:SetText(string.format("\n\n" .. L.HOLD_TO_RELEASE, db.keyModifier))
-                    end
-                else
-                    
-                    local elapsedDeath = currentTime - deathTime
-                    local remaining = (db.timerSeconds or 0) - elapsedDeath
-
-                    popup.StayDeadHeadline:SetFont(popup.StayDeadHeadline:GetFont(), 14)
-                    popup.StayDeadHeadline:SetPoint("TOP", popup, "TOP", 0, -25)
-                    popup.StayDeadHeadline:SetText(L.WAIT_TO_RELEASE)
-                    fontString:SetText(string.format("\n\n" .. L.READY_IN, math.max(0, remaining)))
-                end
-
-                popup:SetHeight(100) -- Increase height to accommodate extra line
-            else
-                -- Restore the original Blizzard popup
-                local inInstance = IsInInstance()
-                if inInstance then
-                    popup:SetHeight(originalHeight)
-                    fontString:SetText(originalText)
-                end
-
-                ResetDeathPopupState()
-                self:SetScript("OnUpdate", StaticPopup_OnUpdate)
-            end
-        end)
+    if not popup.StayDead_OriginalText then
+        popup.StayDead_OriginalText = fontString:GetText()
     end
+    if not popup.StayDead_OriginalHeight and popup:GetHeight() ~= 100 then
+        popup.StayDead_OriginalHeight = popup:GetHeight()
+    end
+
+    if not popup.StayDead_Headline then
+        popup.StayDead_Headline = popup:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        popup.StayDead_Headline:SetJustifyH("CENTER")
+    end
+
+    popup.StayDead_Headline:Show()
+
+    popup:SetScript("OnUpdate", function(self, elapsed)
+        if self.which ~= "DEATH" then
+            ResetDeathPopupState()
+            self:SetScript("OnUpdate", StaticPopup_OnUpdate)
+            return
+        end
+
+        if not deathTime then return end
+        
+        local currentTime = GetTime()
+        local displayReady = IsReleaseAllowed(db) and releaseUnlocked
+        
+        if not displayReady then
+            if db.keyModifier and db.keyModifier ~= "NONE" then
+                if modifierPressTime then
+                    local remaining = (db.timerSeconds or 2) - (currentTime - modifierPressTime)
+
+                    self.StayDead_Headline:SetFont(self.StayDead_Headline:GetFont(), 14)
+                    self.StayDead_Headline:SetPoint("TOP", self, "TOP", 0, -25)
+                    self.StayDead_Headline:SetText(string.format(L.KEEP_HOLDING, db.keyModifier))
+                    fontString:SetText(string.format("\n\n(%.1fs)", math.max(0, remaining)))
+                else
+                    self.StayDead_Headline:SetFont(self.StayDead_Headline:GetFont(), 18)
+                    self.StayDead_Headline:SetPoint("TOP", self, "TOP", 0, -20)
+                    self.StayDead_Headline:SetText(L.DO_NOT_RELEASE)
+                    fontString:SetText(string.format("\n\n" .. L.HOLD_TO_RELEASE, db.keyModifier))
+                end
+            else
+                
+                local elapsedDeath = currentTime - deathTime
+                local remaining = (db.timerSeconds or 0) - elapsedDeath
+
+                self.StayDead_Headline:SetFont(self.StayDead_Headline:GetFont(), 14)
+                self.StayDead_Headline:SetPoint("TOP", self, "TOP", 0, -25)
+                self.StayDead_Headline:SetText(L.WAIT_TO_RELEASE)
+                fontString:SetText(string.format("\n\n" .. L.READY_IN, math.max(0, remaining)))
+            end
+
+            -- Only set height if it isn't already set to 100 to avoid flickering
+            if self:GetHeight() ~= 100 then
+                self:SetHeight(100)
+            end
+        else
+            ResetDeathPopupState()
+            self:SetScript("OnUpdate", StaticPopup_OnUpdate)
+        end
+    end)
 end
-
-
 
 local function SetupDeathPopup(db)
     local shouldBeActive = ShouldBeActiveInCurrentLocation()
