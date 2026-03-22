@@ -2,7 +2,7 @@
 ## Title: Stay Dead
 ## Notes: Prevents accidental spirit releases
 ## Author: Nielhardt
-## Version: 12.0.1.5
+## Version: 12.0.1.6
 ## IconTexture: Interface\Icons\spell_holy_guardianspirit
 ## X-Category: Combat
 
@@ -12,9 +12,6 @@
 ## Title-itIT: Rimani Morto
 ## Title-ptBR: Fique Morto
 ## Title-ruRU: Оставайся Мертвым
-## Title-koKR: 죽은 채로 있기
-## Title-zhCN: 保持死亡
-## Title-zhTW: 保持死亡
 
 ## Notes-deDE: Verhindert versehentliche Geistfreigaben
 ## Notes-frFR: Empêche les libérations d'esprit accidentelles
@@ -22,9 +19,6 @@
 ## Notes-itIT: Previene rilasci di spirito accidentali
 ## Notes-ptBR: Previne liberações de espírito acidentais
 ## Notes-ruRU: Предотвращает случайное освобождение духа
-## Notes-koKR: 실수로 영혼을 해방하는 것을 방지합니다
-## Notes-zhCN: 防止意外释放灵魂
-## Notes-zhTW: 防止意外釋放靈魂
 
 ## Category: Combat
 ## Category-deDE: Kampf
@@ -32,15 +26,13 @@
 ## Category-esMX: Combate
 ## Category-frFR: Combat
 ## Category-itIT: Combattimento
-## Category-koKR: 전투
 ## Category-ptBR: Combate
 ## Category-ruRU: Бой
-## Category-zhCN: 战斗
-## Category-zhTW: 戰鬥
 
 ## SavedVariables: StayDeadDB
 
 Locales.lua
+Log.lua
 Core.lua
 Settings.lua
 ReleaseFrame.lua
