@@ -21,7 +21,7 @@ function SD:InitSettings()
     end
     
     -- General Settings Section
-    addHeader("General Settings", "Configure how the addon prevents spirit releases")
+    addHeader(L.SETTINGS_HEADER_GENERAL, L.SETTINGS_HEADER_GENERAL_TOOLTIP)
     
     -- Key Modifier
     local function GetKeyModifierOptions()
@@ -43,32 +43,55 @@ function SD:InitSettings()
         "CTRL"
     )
     Settings.CreateDropdown(category, keyModifierSetting, GetKeyModifierOptions, L.SETTINGS_KEY_MODIFIER_TOOLTIP)
-    
-    -- Timer Duration
+
+    -- Timer Duration (slider operates in integer ticks 0-30, where 10 ticks = 1 second)
     local function GetTimerValue()
-        return StayDeadDB.timerSeconds or 2
+        local timerTicks = StayDeadDB.timerTicks
+        if timerTicks == nil then
+            return SD.SecondsToTicks(StayDeadDB.timerSeconds)
+        end
+
+        return SD.NormalizeTicks(timerTicks)
     end
     
-    local function SetTimerValue(value)
-        StayDeadDB.timerSeconds = value
+    local function SetTimerValue(ticks)
+        ticks = SD.NormalizeTicks(ticks)
+        StayDeadDB.timerTicks = ticks
+        StayDeadDB.timerSeconds = ticks / 10
     end
     
     local timerSetting = Settings.RegisterProxySetting(
         category,
-        "SD_TIMER_SECONDS",
+        "SD_TIMER_TICKS",
         type(0),
         L.SETTINGS_TIMER,
-        1,
+        5,
         GetTimerValue,
         SetTimerValue
     )
     
-    local options = Settings.CreateSliderOptions(0, 10, 1)
-    options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    local options = Settings.CreateSliderOptions(0, 30, 1)
+    options:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right, function(ticks)
+        return string.format("%.1f", ticks / 10)
+    end)
     Settings.CreateSlider(category, timerSetting, options, L.SETTINGS_TIMER_TOOLTIP)
 
+    -- Safety Timeout
+    local safetyTimeoutSetting = Settings.RegisterAddOnSetting(
+        category,
+        "SD_SAFETY_TIMEOUT",
+        "safetyTimeout",
+        StayDeadDB,
+        type(0),
+        L.SETTINGS_SAFETY_TIMEOUT,
+        30
+    )
+    local safetyOptions = Settings.CreateSliderOptions(0, 120, 5)
+    safetyOptions:SetLabelFormatter(MinimalSliderWithSteppersMixin.Label.Right)
+    Settings.CreateSlider(category, safetyTimeoutSetting, safetyOptions, L.SETTINGS_SAFETY_TIMEOUT_TOOLTIP)
+
     -- Block Types Settings Section
-    addHeader("Block Settings", "Choose which buttons to block")
+    addHeader(L.SETTINGS_HEADER_BLOCK, L.SETTINGS_HEADER_BLOCK_TOOLTIP)
 
     local blockSoulstone = Settings.RegisterAddOnSetting(
         category,
@@ -82,7 +105,7 @@ function SD:InitSettings()
     Settings.CreateCheckbox(category, blockSoulstone, L.SETTINGS_BLOCK_SOULSTONE_TOOLTIP)
 
     -- Location Settings Section
-    addHeader("Location Settings", "Choose where the addon is active")
+    addHeader(L.SETTINGS_HEADER_LOCATION, L.SETTINGS_HEADER_LOCATION_TOOLTIP)
     
     -- Enable/Disable addon
     local enabledSetting = Settings.RegisterAddOnSetting(
@@ -124,18 +147,25 @@ function SD:InitSettings()
     end
 
      -- Helper to manually update location checkbox enabled state
+    local locationKeys = {}
+    for _, location in ipairs(locationSettings) do
+        locationKeys[location.key] = true
+    end
+
     local function UpdateLocationCheckboxes()
         if SettingsPanel.Container and SettingsPanel.Container.SettingsList and SettingsPanel.Container.SettingsList.ScrollBox then
             local scrollBox = SettingsPanel.Container.SettingsList.ScrollBox
             if scrollBox.GetFrames then
                 local frames = scrollBox:GetFrames()
-                for i, frame in ipairs(frames) do
-                    -- Skip the first checkbox (Enable Addon), location checkboxes are frames 8-12
-                    if frame.Checkbox and i > 7 then
-                        if enabledSetting:GetValue() then
-                            frame.Checkbox:Enable()
-                        else
-                            frame.Checkbox:Disable()
+                for _, frame in ipairs(frames) do
+                    if frame.Checkbox and frame.data and frame.data.setting then
+                        local variable = frame.data.setting:GetVariable()
+                        if variable and locationKeys[variable] then
+                            if enabledSetting:GetValue() then
+                                frame.Checkbox:Enable()
+                            else
+                                frame.Checkbox:Disable()
+                            end
                         end
                     end
                 end
@@ -147,7 +177,26 @@ function SD:InitSettings()
     enabledSetting:SetValueChangedCallback(function(setting, value)
         UpdateLocationCheckboxes()
     end)
-    
+
+    -- Slash Commands Section (compact: all commands in a single header row)
+    local commands = {
+        { cmd = "/sd", desc = L.SETTINGS_CMD_OPEN },
+        { cmd = "/sd debug", desc = L.SETTINGS_CMD_DEBUG },
+        { cmd = "/sd reset", desc = L.SETTINGS_CMD_RESET },
+    }
+
+    local cmdParts = {}
+    local tooltipLines = { L.SETTINGS_HEADER_COMMANDS_TOOLTIP, "" }
+    for _, entry in ipairs(commands) do
+        table.insert(cmdParts, "|cff00ccff" .. entry.cmd .. "|r")
+        table.insert(tooltipLines, "|cff00ccff" .. entry.cmd .. "|r  —  " .. entry.desc)
+    end
+
+    addHeader(
+        L.SETTINGS_HEADER_COMMANDS .. "    " .. table.concat(cmdParts, "  |cff888888·|r  "),
+        table.concat(tooltipLines, "\n")
+    )
+
     -- Register category
     Settings.RegisterAddOnCategory(category)
 end
