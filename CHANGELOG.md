@@ -1,3 +1,8 @@
+## v12.0.1.7
+### Improvements
+- Randomized fun load messages on each login
+- Improved log formatting with colored prefix
+
 ## v12.0.1.6
 ### New Features
 - Delay timer now supports 0.1s increments (e.g. 0.5s, 1.3s) instead of whole seconds only

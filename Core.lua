@@ -86,6 +86,17 @@ function SD:InitDB()
     StayDeadDB.timerSeconds = timerTicks / 10
 end
 
+local loadMessages = {
+    "Loaded. Try not to die... or at least don't release.",
+    "Standing by to prevent regrettable life choices.",
+    "That release button just lost its privileges.",
+    "Ready. No early releases on my shift.",
+    "Loaded. Step away from the release button.",
+    "On duty. Release Spirit? Not so fast.",
+    "Loaded. Die freely, release carefully.",
+    "Active. Your corpse run can wait a moment.",
+}
+
 -- Main frame
 local frame = CreateFrame("Frame")
 frame:RegisterEvent("ADDON_LOADED")
@@ -94,7 +105,7 @@ frame:SetScript("OnEvent", function(self, event, arg1)
     if event == "ADDON_LOADED" and arg1 == addonName then
         SD:InitDB()
         SD.debugMode = StayDeadDB.debugMode or false
-        SD.LogInfo("Addon loaded.")
+        SD.LogInfo(loadMessages[math.random(#loadMessages)])
         if SD.debugMode then
             SD.LogInfo("Debug mode |cff00ff00active|r (saved from last session).")
         end

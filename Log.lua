@@ -12,19 +12,21 @@ local function FormatMsg(msg, ...)
     return msg
 end
 
+local PREFIX = "|cff66bbffStayDead:|r "
+
 function SD.LogInfo(msg, ...)
-    print("StayDead: " .. FormatMsg(msg, ...))
+    print(PREFIX .. FormatMsg(msg, ...))
 end
 
 function SD.LogWarn(msg, ...)
-    print("|cffffcc00StayDead: " .. FormatMsg(msg, ...) .. "|r")
+    print(PREFIX .. "|cffffcc00" .. FormatMsg(msg, ...) .. "|r")
 end
 
 function SD.LogError(msg, ...)
-    print("|cffff0000StayDead: [ERROR] " .. FormatMsg(msg, ...) .. "|r")
+    print(PREFIX .. "|cffff0000[ERROR] " .. FormatMsg(msg, ...) .. "|r")
 end
 
 function SD.LogDebug(msg, ...)
     if not SD.debugMode then return end
-    print("|cff888888StayDead: " .. FormatMsg(msg, ...) .. "|r")
+    print(PREFIX .. "|cff888888" .. FormatMsg(msg, ...) .. "|r")
 end
